@@ -1,13 +1,16 @@
-from django.db.utils import IntegrityError
 from django.shortcuts import get_object_or_404
-from rest_framework import viewsets, filters, status
+from rest_framework import viewsets, filters
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.permissions import IsAuthenticated
-from rest_framework.response import Response
 
 from posts.models import Follow, Group, Post
-from .serializers import CommentSerializer, FollowSerializer, GroupSerializer, PostSerializer
 from .permissions import OwnerOrReadOnly
+from .serializers import (
+    CommentSerializer,
+    FollowSerializer,
+    GroupSerializer,
+    PostSerializer
+)
 
 
 class PostViewSet(viewsets.ModelViewSet):
@@ -59,7 +62,7 @@ class FollowViewset(viewsets.ModelViewSet):
     def get_queryset(self):
         """Метод API для получения querysetа подписок."""
         return Follow.objects.filter(user=self.request.user)
-    
+
     def perform_create(self, serializer):
         """Метод API для создания подписок."""
         serializer.save(user=self.request.user)

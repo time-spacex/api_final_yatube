@@ -78,8 +78,12 @@ class FollowSerializer(serializers.ModelSerializer):
         fields = ('user', 'following')
         validators = [
             UniqueTogetherValidator(
-               queryset=User.objects.all(),
-                fields=['user', 'following'],
-                message=status.HTTP_400_BAD_REQUEST
+                queryset=Follow.objects.all(),
+                fields=['user', 'following']
             )
         ]
+
+    def validate(self, data):
+        if self.context.get('request').user == data.get('following'):
+            raise serializers.ValidationError(status.HTTP_400_BAD_REQUEST)
+        return data
