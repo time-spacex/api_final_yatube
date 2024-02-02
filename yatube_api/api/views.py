@@ -1,10 +1,14 @@
 from django.shortcuts import get_object_or_404
-from rest_framework import viewsets, filters
+from rest_framework import viewsets, filters, mixins
 from rest_framework.pagination import LimitOffsetPagination
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import (
+    IsAuthenticated,
+    IsAuthenticatedOrReadOnly,
+    AllowAny
+)
 
-from posts.models import Follow, Group, Post
-from .permissions import OwnerOrReadOnly
+from posts.models import Group, Post
+from .permissions import IsOwnerOrReadOnly
 from .serializers import (
     CommentSerializer,
     FollowSerializer,
@@ -19,7 +23,7 @@ class PostViewSet(viewsets.ModelViewSet):
     queryset = Post.objects.all()
     serializer_class = PostSerializer
     pagination_class = LimitOffsetPagination
-    permission_classes = (OwnerOrReadOnly,)
+    permission_classes = (IsOwnerOrReadOnly, IsAuthenticatedOrReadOnly)
 
     def perform_create(self, serializer):
         """Метод API для создания постов."""
@@ -31,27 +35,34 @@ class GroupViewSet(viewsets.ReadOnlyModelViewSet):
 
     queryset = Group.objects.all()
     serializer_class = GroupSerializer
-    permission_classes = (OwnerOrReadOnly,)
+    permission_classes = (AllowAny,)
 
 
 class CommentViewSet(viewsets.ModelViewSet):
     """Вьюсет API для модели комментариев к постам."""
 
     serializer_class = CommentSerializer
-    permission_classes = (OwnerOrReadOnly,)
+    permission_classes = (IsOwnerOrReadOnly, IsAuthenticatedOrReadOnly)
+
+    def get_post(self, post_id):
+        return get_object_or_404(Post, pk=post_id)
 
     def get_queryset(self):
         """Метод API для получения querysetа комметариев."""
-        post = get_object_or_404(Post, pk=self.kwargs.get('post_id'))
+        post = self.get_post(post_id=self.kwargs.get('post_id'))
         return post.comments.all()
 
     def perform_create(self, serializer):
         """Метод API для создания комментария."""
-        post = get_object_or_404(Post, pk=self.kwargs.get('post_id'))
+        post = self.get_post(post_id=self.kwargs.get('post_id'))
         serializer.save(author=self.request.user, post=post)
 
 
-class FollowViewset(viewsets.ModelViewSet):
+class FollowViewset(
+    mixins.CreateModelMixin,
+    mixins.ListModelMixin,
+    viewsets.GenericViewSet
+):
     """Вьюсет API для модели подписок пользователей."""
 
     serializer_class = FollowSerializer
@@ -61,7 +72,7 @@ class FollowViewset(viewsets.ModelViewSet):
 
     def get_queryset(self):
         """Метод API для получения querysetа подписок."""
-        return Follow.objects.filter(user=self.request.user)
+        return self.request.user.subscriptions.all()
 
     def perform_create(self, serializer):
         """Метод API для создания подписок."""

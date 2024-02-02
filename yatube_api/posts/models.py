@@ -1,5 +1,6 @@
 from django.contrib.auth import get_user_model
 from django.db import models
+from django.db.models import F, Q
 
 
 User = get_user_model()
@@ -58,12 +59,12 @@ class Follow(models.Model):
 
     user = models.ForeignKey(
         User,
-        related_name='follower',
+        related_name='subscriptions',
         on_delete=models.CASCADE
     )
     following = models.ForeignKey(
         User,
-        related_name='following',
+        related_name='followers',
         on_delete=models.CASCADE
     )
 
@@ -72,5 +73,9 @@ class Follow(models.Model):
             models.UniqueConstraint(
                 fields=['user', 'following'],
                 name='unique_user_and_following'
-            )
+            ),
+            models.CheckConstraint(
+                check=~Q(user=F('following')),
+                name='prevent_self_follow'
+            ),
         ]
